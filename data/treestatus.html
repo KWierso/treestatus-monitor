@@ -15,14 +15,51 @@
       tr[hidden] {
         display:none;
       }
+      
+      #timeTable td:nth-child(1) {
+        background-color: red;
+      }
+      
+      #timeTable td:nth-child(2) {
+        background-color: green;
+      }
+      
+      #tableSelect {
+        float:right;
+      }
+      
+      #timeTable {
+        float:left;
+      }
+      
+      #pie {
+        float:left;
+        clear:both;
+      }
     </style>
   </head>
   <body>
-    <div id="pie"> </div>
-    <br/>
     <select id="tableSelect">
       <option value="ALL" selected>ALL CHANGES</option>
     </select>
+    <table id="timeTable">
+      <thead>
+        <th> Days closed</th>
+        <th> Days open</th>
+        <th> Days listed</th>
+        <th> Percent closed</th>
+      </thead>
+      <tbody>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="pie"> </div>
+    <br/>
     <table id="statusTable">
       <thead>
         <th>When</th>

@@ -218,7 +218,7 @@ function drawPie(closedTime, openTime, totalTime) {
 
 var dataset = [{"label":"open", "value":0}, {"label":"closed", "value":0}]
 
-var width = 960,
+var width = 500,
     height = 500,
     radius = Math.min(width, height) / 2;
 
@@ -239,15 +239,20 @@ var path = svg.selectAll("path")
     .data(pie(dataset))
   .enter().append("path")
     .attr("fill", function(d, i) { return d.data.label == "open" ? d3.rgb("green") : d3.rgb("red") })
-    .attr("d", arc);
-
-
-var timeout = window.setTimeout(change, 10000);
+    .attr("d", arc)
+    .attr("title", function(d, i) { return d.data.value; });
 
 function change() {
-  window.clearTimeout(timeout);
   path = path.data(pie([{"label":"open", "value":openTime}, {"label":"closed", "value":closedTime}])); // update the data
-  path.attr("d", arc); // redraw the arcs
+  path.attr("d", arc)
+      .attr("title", function(d, i) { return (d.data.value / totalTime).toFixed(2) * 100 + " %"; });
+  path.append("svg:text").attr("text-anchor", "middle").text(function(d,i) { return d.data.value + " DAYS";});
+  
+  var timeTableCells = document.getElementById("timeTable").getElementsByTagName("tbody")[0].getElementsByTagName("td");
+  timeTableCells[0].textContent = closedTime;
+  timeTableCells[1].textContent = openTime;
+  timeTableCells[2].textContent = totalTime;
+  timeTableCells[3].textContent = (closedTime / totalTime).toFixed(2) * 100 + "%";
 }
 
 function populateSelect(count) {
