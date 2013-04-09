@@ -1,0 +1,38 @@
+<html>
+  <head>
+    <style>
+      td { 
+        border:1px solid black;
+      }
+      tr[action=closed] > td:nth-child(3) {
+        background-color: red;
+      }
+      
+      tr[action=open] > td:nth-child(3) {
+        background-color: green;
+      }
+      
+      tr[hidden] {
+        display:none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pie"> </div>
+    <br/>
+    <select id="tableSelect">
+      <option value="ALL" selected>ALL CHANGES</option>
+    </select>
+    <table id="statusTable">
+      <thead>
+        <th>When</th>
+        <th>Who</th>
+        <th>Action</th>
+        <th>Reason</th>
+        <th>Tree</th>
+        <th>Tags</th>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </body>
+</html>
