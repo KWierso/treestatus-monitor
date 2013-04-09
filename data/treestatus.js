@@ -22,6 +22,9 @@ select.addEventListener("change", function(evt) {
   change();
 }, false);
 
+self.port.on("treetitle", function(title) {
+  document.title = title;
+});
 
 self.port.on("treestatus", function(status) {
   let statusChanges = [];
