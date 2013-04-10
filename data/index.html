@@ -14,7 +14,7 @@
         background-color: green;
       }
       
-      tr[hidden] {
+      [hidden] {
         display:none;
       }
       
@@ -26,8 +26,12 @@
         background-color: green;
       }
       
-      #tableSelect {
+      select {
         float:right;
+      }
+      
+      #selectSelect {
+        clear: both;
       }
       
       #timeTable {
@@ -45,7 +49,15 @@
     </style>
   </head>
   <body>
-    <select id="tableSelect">
+    <select id="selectSelect">
+      <option value="UNSET" selected>SELECT A FILTER</option>
+      <option value="MONTHS">BY MONTH</option>
+      <option value="CHANGES">BY CHANGE RANGE</option>
+    </select>
+    <select id="changesSelect">
+      <option value="ALL" selected>ALL CHANGES</option>
+    </select>
+    <select id="monthsSelect">
       <option value="ALL" selected>ALL CHANGES</option>
     </select>
     <table id="timeTable">
