@@ -364,11 +364,9 @@ function updateMonthsTimes(monthAndYear) {
   for(i in statusChanges) {
     try {
       closedTime = closedTime + computeTime(rows[statusChanges[parseInt(i)+1]], rows[statusChanges[i]-1]);
-    //  console.log((computeTime(rows[statusChanges[parseInt(i)+1]], rows[statusChanges[i]-1]) / 1000 / 60/60/24).toFixed(2));
     } catch(e) {}
   }
 
-console.log(endOfMonth);
   // If the last status of the month is "closed", we need to count the rest of the month as closed time
   // (Unless it's the current month, then we only count until today)
   if(rows[firstrowvisible].children[2].textContent == "closed") {
@@ -378,10 +376,8 @@ console.log(endOfMonth);
     }
     if(currentDate.getMonth() == nextMonth - 1) {
       closedTime = closedTime + computeTime(currentDate, rows[lastClosed-1]);
-      console.log("IF",endOfMonth);
     } else {
       closedTime = closedTime + computeTime(endOfMonth, rows[lastClosed-1]);
-      console.log("ELSE",endOfMonth);
     }
   }
   
@@ -421,7 +417,6 @@ function updateDaysTimes() {
         prevDate = new Date(rows[i+1].children[0].textContent);
         if(thisDate.getDay() != prevDate.getDay()) {
           dayChange.push([i, rows[i+1].children[2].textContent]);
-          console.log(thisDate, rows[i+1].children[2].textContent);
         }
       } catch(e) { console.log("ERROR", i) }
     }
