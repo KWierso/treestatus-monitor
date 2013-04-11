@@ -17,7 +17,7 @@ let monthMap = {
 
 let allSelects = document.getElementsByTagName("select");
 function hideFilterSelects() {
-  for(select of allSelects) {
+  for(let select of allSelects) {
     if(select.id != "selectSelect") {
       select.setAttribute("hidden", true);
     }
@@ -32,7 +32,6 @@ selectSelect.addEventListener("change", function(evt) {
   switch(value) {
     case "UNSET":
       unhideAll();
-      
       break;
     case "MONTHS":
       unhideAll();
@@ -44,10 +43,37 @@ selectSelect.addEventListener("change", function(evt) {
       document.getElementById("changesSelect").selectedIndex = 0;
       document.getElementById("changesSelect").removeAttribute("hidden");
       break;
+    case "DAYS":
+      unhideAll();
+      document.getElementById("daysSelect").selectedIndex = 0;
+      document.getElementById("daysSelect").removeAttribute("hidden");
+      break;
   }
   updateChangesTimes();
   change();
 });
+
+let daysSelect = document.getElementById("daysSelect");
+daysSelect.addEventListener("change", function(evt) { 
+  let value = evt.target[evt.target.selectedIndex].value; 
+  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
+  if(value == "ALL") {
+    unhideAll();
+  } else {
+    for(let row of rows) {
+      let thisDate = new Date(row.getAttribute("when"));
+      let thisDay = thisDate.getDay();
+      if(thisDay == value) {
+        row.removeAttribute("hidden");
+      } else {
+        row.setAttribute("hidden", true);
+      }
+    }
+  }
+  
+  updateDaysTimes();
+  change();
+}, false);
 
 let changesSelect = document.getElementById("changesSelect");
 changesSelect.addEventListener("change", function(evt) { 
@@ -110,7 +136,6 @@ self.port.on("treestatus", function(status) {
 
   monthsChanged = [];
   
-  populateChangesSelect(Math.floor(status.length/100));
   
   d3.select("#statusTable").select("tbody").selectAll("tr").data(status).enter().append("tr")
     .attr("reason", function(d) { return d.reason; })
@@ -123,13 +148,11 @@ self.port.on("treestatus", function(status) {
   let rows = document.getElementById("statusTable").getElementsByTagName("tr");
   let rowcount = 0;
 
-  for(i of rows) {
+  for(let i of rows) {
     if(i.getElementsByTagName("th").length == 0) {
       let whenCell = document.createElement("td");
       whenCell.textContent = i.getAttribute("when");
       i.appendChild(whenCell);
-      
-      addToMonthsChanged(new Date(i.getAttribute("when")));
       
       let whoCell = document.createElement("td");
       whoCell.textContent = i.getAttribute("who");
@@ -142,14 +165,26 @@ self.port.on("treestatus", function(status) {
       let reasonCell = document.createElement("td");
       reasonCell.textContent = i.getAttribute("reason");
       i.appendChild(reasonCell);
-      
+    }
+  }
+
+  // Delete the first two months of treestatus history since they were skewing results
+  let table = document.getElementById("statusTable");
+  for(let i=rows.length-1;i>0;i--) {
+    let testdate = new Date(rows[i].getAttribute("when"));
+    let monthyear = [testdate.getFullYear(), testdate.getMonth()];
+    if(monthyear[0] == "2012" && (monthyear[1] == "4" || monthyear[1] == "5")) {
+      table.deleteRow(i);
+    } else {
+      addToMonthsChanged(new Date(rows[i].getAttribute("when")));
       rowcount = rowcount + 1;
     }
   }
 
+  populateChangesSelect(Math.floor(rowcount/100));
   populateMonthsSelect();
 
-  for( i=rowcount-1;i>0;i--) {
+  for(let i=rowcount-1;i>0;i--) {
     let thisStatus = rows[i];
     let thisStatusAction = thisStatus.getElementsByTagName("td")[2].textContent
     if(previousStatus)
@@ -362,6 +397,34 @@ function updateMonthsTimes(monthAndYear) {
   openTime = openTime.toFixed(2);
 }
 
+function updateDaysTimes() {
+  let currentDate = new Date();
+  
+  let firstVisible, lastVisible;
+  let dayChange = [];
+  
+  if(daysSelect[daysSelect.selectedIndex].value == "ALL") {
+    updateChangesTimes();
+    return;
+  }
+  
+  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
+  for(let i=rows.length-1;i>0;i--) {
+    if(!rows[i].hasAttribute("hidden")) {
+      let thisDate = new Date(rows[i].children[0].textContent);
+      let prevDate;
+      try {
+        prevDate = new Date(rows[i+1].children[0].textContent);
+        if(thisDate.getDay() != prevDate.getDay()) {
+          dayChange.push([i, rows[i+1].children[2].textContent]);
+          console.log(thisDate, rows[i+1].children[2].textContent);
+        }
+      } catch(e) { console.log("ERROR", i) }
+    }
+  }
+  console.log(dayChange);
+}
+
 function logTime() {
   console.log(closedTime, openTime, totalTime);
 }
@@ -432,6 +495,7 @@ function populateChangesSelect(count) {
 
 function populateMonthsSelect() {
   let select = document.getElementById("monthsSelect");
+  monthsChanged = monthsChanged.reverse();
   for(let j of monthsChanged) {
     let option = document.createElement("option");
     option.value = j
