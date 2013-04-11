@@ -287,13 +287,14 @@ function updateMonthsTimes(monthAndYear) {
   }
   let startOfMonth = new Date(monthAndYear.split(" ")[0] + " 1, " + monthAndYear.split(" ")[1]);
   
+  // Roll over the end of the year if necessary
   let nextMonth = startOfMonth.getMonth() + 1;
   let year = startOfMonth.getFullYear();
-  
   if(nextMonth > 11) {
-    nextMonth = 1;
+    nextMonth = 0;
     year = year + 1;
   }
+  
   let endOfMonth = new Date(monthMap[nextMonth] + " 1, " + year);
   
   startOfMonth.setHours(0);
@@ -348,7 +349,6 @@ function updateMonthsTimes(monthAndYear) {
   statusChanges = statusChanges.reverse();
   
   
-
   closedTime = 0;
   openTime = 0;
   totalTime = 0;
@@ -368,6 +368,7 @@ function updateMonthsTimes(monthAndYear) {
     } catch(e) {}
   }
 
+console.log(endOfMonth);
   // If the last status of the month is "closed", we need to count the rest of the month as closed time
   // (Unless it's the current month, then we only count until today)
   if(rows[firstrowvisible].children[2].textContent == "closed") {
@@ -377,8 +378,10 @@ function updateMonthsTimes(monthAndYear) {
     }
     if(currentDate.getMonth() == nextMonth - 1) {
       closedTime = closedTime + computeTime(currentDate, rows[lastClosed-1]);
+      console.log("IF",endOfMonth);
     } else {
       closedTime = closedTime + computeTime(endOfMonth, rows[lastClosed-1]);
+      console.log("ELSE",endOfMonth);
     }
   }
   
@@ -391,6 +394,7 @@ function updateMonthsTimes(monthAndYear) {
     totalTime = computeTime(endOfMonth, startOfMonth) / 1000 / 60 / 60 / 24;
   }
   
+logTime();
   totalTime = totalTime.toFixed(2);
 
   openTime = totalTime - closedTime;
