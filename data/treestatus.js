@@ -1,4 +1,4 @@
-let closedTime, openTime, totalTime, monthsChanged;
+let closedTime, openTime, totalTime, monthsChanged, allStatuses;
 
 let monthMap = {
   0: "January",
@@ -15,120 +15,35 @@ let monthMap = {
   11: "December"  
 }
 
-let allSelects = document.getElementsByTagName("select");
-function hideFilterSelects() {
-  for(let select of allSelects) {
-    if(select.id != "selectSelect") {
-      select.setAttribute("hidden", true);
-    }
-  }
+let reverseMonthMap = {
+  "January": 0,
+  "February": 1,
+  "March": 2,
+  "April": 3,
+  "May": 4,
+  "June": 5,
+  "July": 6,
+  "August": 7,
+  "September": 8,
+  "October": 9,
+  "November": 10,
+  "December": 11
 }
-hideFilterSelects();
 
-let selectSelect = document.getElementById("selectSelect");
-selectSelect.addEventListener("change", function(evt) {
-  let value = evt.target[evt.target.selectedIndex].value;
-  hideFilterSelects();
-  switch(value) {
-    case "UNSET":
-      unhideAll();
-      break;
-    case "MONTHS":
-      unhideAll();
-      document.getElementById("monthsSelect").selectedIndex = 0;
-      document.getElementById("monthsSelect").removeAttribute("hidden");
-      break;
-    case "CHANGES":
-      unhideAll();
-      document.getElementById("changesSelect").selectedIndex = 0;
-      document.getElementById("changesSelect").removeAttribute("hidden");
-      break;
-    case "DAYS":
-      unhideAll();
-      document.getElementById("daysSelect").selectedIndex = 0;
-      document.getElementById("daysSelect").removeAttribute("hidden");
-      break;
-  }
-  updateChangesTimes();
-  change();
-});
-
-let daysSelect = document.getElementById("daysSelect");
-daysSelect.addEventListener("change", function(evt) { 
-  let value = evt.target[evt.target.selectedIndex].value; 
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  if(value == "ALL") {
-    unhideAll();
-  } else {
-    for(let row of rows) {
-      let thisDate = new Date(row.getAttribute("when"));
-      let thisDay = thisDate.getDay();
-      if(thisDay == value) {
-        row.removeAttribute("hidden");
-      } else {
-        row.setAttribute("hidden", true);
-      }
-    }
-  }
-  
-  updateDaysTimes();
-  change();
-}, false);
-
-let changesSelect = document.getElementById("changesSelect");
-changesSelect.addEventListener("change", function(evt) { 
-  let value = evt.target[evt.target.selectedIndex].value; 
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  if(value == "ALL") {
-    unhideAll();
-  } else {
-    for(row of rows) {
-      if(row.rowIndex < value) {
-        row.removeAttribute("hidden");
-      } else {
-        row.setAttribute("hidden", true);
-      }
-    }
-  }
-  
-  updateChangesTimes();
-  change();
-}, false);
-
-let monthsSelect = document.getElementById("monthsSelect");
-monthsSelect.addEventListener("change", function(evt) { 
-  let value = evt.target[evt.target.selectedIndex].value; 
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  if(value == "ALL") {
-    unhideAll();
-  } else {
-    for(let row of rows) {
-      let thisDate = new Date(row.getAttribute("when"));
-      let thisDateString = monthMap[thisDate.getMonth()] + " " +  thisDate.getFullYear()
-      if(thisDateString == value) {
-        row.removeAttribute("hidden");
-      } else {
-        row.setAttribute("hidden", true);
-      }
-    }
-  }
-  
-  updateMonthsTimes(value);
-  change();
-}, false);
-
-function unhideAll() {
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  for(row of rows) {
-    row.removeAttribute("hidden");
-  }
-}
 
 self.port.on("treetitle", function(title) {
   document.title = title;
 });
 
 self.port.on("treestatus", function(status) {
+  // Blow away the table of statuses, we're going to re-create it
+  let statusTable = document.getElementById("statusTable");
+  while(statusTable.tBodies[0].children.length > 0) {
+    statusTable.deleteRow(-1);
+  }
+  
+  allStatuses = status;
+
   let statusChanges = [];
   let previousStatus;
   let firstClosed = "";
@@ -181,7 +96,6 @@ self.port.on("treestatus", function(status) {
     }
   }
 
-  populateChangesSelect(Math.floor(rowcount/100));
   populateMonthsSelect();
 
   for(let i=rowcount-1;i>0;i--) {
@@ -226,208 +140,6 @@ self.port.on("treestatus", function(status) {
 self.port.emit("message", "blah");
 
 
-function updateChangesTimes() {
-  let statusChanges = [];
-  let previousStatus;
-  let firstClosed = "";
-  let previousStatusAction;
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  let rowcount = 0;
-  
-  for(let row of rows) {
-    if(!row.hasAttribute("hidden")) {
-      rowcount = rowcount + 1;
-    }
-  }
-
-  for(let i=rowcount-1;i>0;i--) {
-    let thisStatus = rows[i];
-    
-    let thisStatusAction = thisStatus.getElementsByTagName("td")[2].textContent
-    if(previousStatus)
-      previousStatusAction = previousStatus.getElementsByTagName("td")[2].textContent;
-    
-    if(thisStatusAction == "closed" && firstClosed == "") {
-      firstClosed = i;
-    }
-    
-    if(thisStatusAction != previousStatusAction && previousStatusAction == "closed" && thisStatusAction == "open") {
-      statusChanges.push(i);
-    }
-    
-    if(thisStatusAction != "added" && thisStatusAction != "approval require")
-      previousStatus = thisStatus;
-  }
-
-  closedTime = 0;
-  openTime = 0;
-  totalTime = 0;
-  
-  closedTime = closedTime + computeTime(rows[statusChanges[0]], rows[firstClosed]);
-  for(i in statusChanges) {
-    try {
-      closedTime = closedTime + computeTime(rows[statusChanges[parseInt(i)+1]], rows[statusChanges[i]-1]);
-    } catch(e) {}
-  }
-  closedTime = closedTime / 1000 / 60 / 60 / 24;
-  closedTime = closedTime.toFixed(2);
-  
-  totalTime = computeTime(new Date(), rows[rowcount-1]) / 1000 / 60 / 60 / 24;
-  totalTime = totalTime.toFixed(2);
-  
-  openTime = totalTime - closedTime;
-  openTime = openTime.toFixed(2);
-}
-
-function updateMonthsTimes(monthAndYear) {
-  let currentDate = new Date();
-  if(monthsSelect[monthsSelect.selectedIndex].value == "ALL") {
-    updateChangesTimes();
-    return;
-  }
-  let startOfMonth = new Date(monthAndYear.split(" ")[0] + " 1, " + monthAndYear.split(" ")[1]);
-  
-  // Roll over the end of the year if necessary
-  let nextMonth = startOfMonth.getMonth() + 1;
-  let year = startOfMonth.getFullYear();
-  if(nextMonth > 11) {
-    nextMonth = 0;
-    year = year + 1;
-  }
-  
-  let endOfMonth = new Date(monthMap[nextMonth] + " 1, " + year);
-  
-  startOfMonth.setHours(0);
-  endOfMonth.setHours(0);
-  
-  
-  
-  
-  let statusChanges = [];
-  let previousStatus;
-  let firstClosed = "";
-  let previousStatusAction;
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  let firstrowvisible = 0;
-  let lastrowvisible;
-  let countingVisible = false;
-  
-  for(let row of rows) {
-    if(countingVisible) {
-      if(row.hasAttribute("hidden")) {
-        lastrowvisible = lastrowvisible - 1;
-        break;
-      } else {
-        lastrowvisible = lastrowvisible + 1;
-      }
-    } else {
-      if(row.hasAttribute("hidden")) {
-        firstrowvisible = firstrowvisible + 1;
-      } else {
-        countingVisible = true;
-        lastrowvisible = firstrowvisible + 1;
-      }
-    }
-  }
-
-  for(let i = firstrowvisible; i< lastrowvisible; i++) {
-    if(rows[i].getElementsByTagName("th").length == 0) {
-      let thisStatus = rows[i];
-        let thisStatusAction = thisStatus.getElementsByTagName("td")[2].textContent;
-      if(previousStatus)
-        previousStatusAction = previousStatus.getElementsByTagName("td")[2].textContent;
-
-      if(thisStatusAction != previousStatusAction && previousStatusAction == "closed" && thisStatusAction == "open") {
-        statusChanges.push(i);
-      }
-      
-      if(thisStatusAction != "added" && thisStatusAction != "approval require") {
-        previousStatus = thisStatus;
-      }
-    }
-  }
-  statusChanges = statusChanges.reverse();
-  
-  
-  closedTime = 0;
-  openTime = 0;
-  totalTime = 0;
-
-  // If the last month ended while closed, we need to count everything up to the first change of the month as closed
-  try {
-    if(rows[lastrowvisible+1].children[2].textContent == "closed") {
-      closedTime = computeTime(rows[lastrowvisible], new Date(startOfMonth));
-    }
-  }catch(e) {}
-  
-  // Compute the time spent closed between the status changes
-  for(i in statusChanges) {
-    try {
-      closedTime = closedTime + computeTime(rows[statusChanges[parseInt(i)+1]], rows[statusChanges[i]-1]);
-    } catch(e) {}
-  }
-
-  // If the last status of the month is "closed", we need to count the rest of the month as closed time
-  // (Unless it's the current month, then we only count until today)
-  if(rows[firstrowvisible].children[2].textContent == "closed") {
-    let lastClosed = firstrowvisible;
-    while(rows[lastClosed].children[2].textContent == "closed") {
-      lastClosed = lastClosed + 1;
-    }
-    if(currentDate.getMonth() == nextMonth - 1) {
-      closedTime = closedTime + computeTime(currentDate, rows[lastClosed-1]);
-    } else {
-      closedTime = closedTime + computeTime(endOfMonth, rows[lastClosed-1]);
-    }
-  }
-  
-  closedTime = closedTime / 1000 / 60 / 60 / 24;
-  closedTime = closedTime.toFixed(2);
-
-  if(currentDate.getMonth() == nextMonth - 1) {
-    totalTime = computeTime(currentDate, startOfMonth) / 1000 / 60 / 60 / 24;
-  } else {
-    totalTime = computeTime(endOfMonth, startOfMonth) / 1000 / 60 / 60 / 24;
-  }
-  
-logTime();
-  totalTime = totalTime.toFixed(2);
-
-  openTime = totalTime - closedTime;
-  openTime = openTime.toFixed(2);
-}
-
-function updateDaysTimes() {
-  let currentDate = new Date();
-  
-  let firstVisible, lastVisible;
-  let dayChange = [];
-  
-  if(daysSelect[daysSelect.selectedIndex].value == "ALL") {
-    updateChangesTimes();
-    return;
-  }
-  
-  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
-  for(let i=rows.length-1;i>0;i--) {
-    if(!rows[i].hasAttribute("hidden")) {
-      let thisDate = new Date(rows[i].children[0].textContent);
-      let prevDate;
-      try {
-        prevDate = new Date(rows[i+1].children[0].textContent);
-        if(thisDate.getDay() != prevDate.getDay()) {
-          dayChange.push([i, rows[i+1].children[2].textContent]);
-        }
-      } catch(e) { console.log("ERROR", i) }
-    }
-  }
-  console.log(dayChange);
-}
-
-function logTime() {
-  console.log(closedTime, openTime, totalTime);
-}
-
 function computeTime(date1, date2) {
   if(date1.tagName == "TR") {
     date1 = new Date(date1.children[0].textContent.trim());
@@ -435,7 +147,6 @@ function computeTime(date1, date2) {
   if(date2.tagName == "TR") {
     date2 = new Date(date2.children[0].textContent.trim());
   }
-  
   return date1 - date2;
 }
 
@@ -479,28 +190,144 @@ function change() {
   timeTableCells[0].textContent = closedTime;
   timeTableCells[1].textContent = openTime;
   timeTableCells[2].textContent = totalTime;
-  timeTableCells[3].textContent = (closedTime / totalTime).toFixed(2) * 100 + "%";
+  timeTableCells[3].textContent = ((closedTime / totalTime) * 100).toFixed(2) + "%";
 }
 
-function populateChangesSelect(count) {
-  let select = document.getElementById("changesSelect");
-  for(i=count;i>0;i--) {
-    let option = document.createElement("option");
-    option.value = i*100;
-    option.textContent = i*100 + " MOST RECENT CHANGES";
-    select.add(option)
+// When a month is selected from the select box, scan this list of all changes for changes this month
+let monthsSelect = document.getElementById("monthsSelect");
+monthsSelect.addEventListener("change", function(evt) {
+  let value = evt.target[evt.target.selectedIndex].value;
+  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
+  
+  let thisMonthsChanges = [];
+  let previousMonthEndStatus;
+  if(value == "ALL") {
+    self.port.emit("message", "blah");
+  } else {
+    for(let i=0;i<allStatuses.length;i++) {
+      let thisDate = new Date(allStatuses[i].when);
+      let thisDateString = monthMap[thisDate.getMonth()] + " " + thisDate.getFullYear()
+      if(thisDateString == value) {
+        thisMonthsChanges.push(allStatuses[i]);
+        if(!previousMonthEndStatus && monthMap[new Date(allStatuses[i+1].when).getMonth()] + " " + new Date(allStatuses[i+1].when).getFullYear() != value) {
+          previousMonthEndStatus = allStatuses[i+1].action;
+        }
+      } else {
+      }
+    }
+    
+    updateMonthsTimes(previousMonthEndStatus, thisMonthsChanges, value, evt.target.selectedIndex);
+    change();
   }
-}
+}, false);
 
-function populateMonthsSelect() {
-  let select = document.getElementById("monthsSelect");
-  monthsChanged = monthsChanged.reverse();
-  for(let j of monthsChanged) {
-    let option = document.createElement("option");
-    option.value = j
-    option.textContent = j;
-    select.add(option)
+function updateMonthsTimes(startStatus, thisMonthsChanges, thisMonth, index) {
+  let statusChanges = [];
+  let previousStatus;
+  let firstClosed = "";
+  let previousStatusAction;
+
+  // Blow away the table of statuses, we're going to re-create it
+  let statusTable = document.getElementById("statusTable");
+  while(statusTable.tBodies[0].children.length > 0) {
+    statusTable.deleteRow(-1);
   }
+  
+  // Repopulate the table with rows for this month's changes
+  d3.select("#statusTable").select("tbody").selectAll("tr").data(thisMonthsChanges).enter().append("tr")
+    .attr("reason", function(d) { return d.reason; })
+    .attr("tags", function(d) { return d.tags; })
+    .attr("action", function(d) { return d.action; })
+    .attr("tree", function(d) { return d.tree; })
+    .attr("who", function(d) { return d.who; })
+    .attr("when", function(d) { return d.when; });
+  
+  let rows = document.getElementById("statusTable").getElementsByTagName("tr");
+  let rowcount = 0;
+
+  // For each row's information, populate the table cells
+  for(let i of rows) {
+    if(i.getElementsByTagName("th").length == 0) {
+      let whenCell = document.createElement("td");
+      whenCell.textContent = i.getAttribute("when");
+      i.appendChild(whenCell);
+      
+      let whoCell = document.createElement("td");
+      whoCell.textContent = i.getAttribute("who");
+      i.appendChild(whoCell);
+      
+      let actionCell = document.createElement("td");
+      actionCell.textContent = i.getAttribute("action");
+      i.appendChild(actionCell);
+      
+      let reasonCell = document.createElement("td");
+      reasonCell.textContent = i.getAttribute("reason");
+      i.appendChild(reasonCell);
+    }
+  }
+  
+  // Delete the first two months of treestatus history since they were skewing results
+  let table = document.getElementById("statusTable");
+  for(let i=rows.length-1;i>0;i--) {
+    let testdate = new Date(rows[i].getAttribute("when"));
+    let monthyear = [testdate.getFullYear(), testdate.getMonth()];
+    if(monthyear[0] == "2012" && (monthyear[1] == "4" || monthyear[1] == "5")) {
+      table.deleteRow(i);
+    } else {
+      rowcount = rowcount + 1;
+    }
+  }
+  
+  let currentlyClosed = false;
+  let lastClosedIndex;
+  closedTime = 0;
+  
+  for(let i=rowcount;i>0;i--) {
+    let thisRow = rows[i];
+    let thisStatus = thisRow.getElementsByTagName("td")[2].textContent;
+    
+    // We need to record the unique tree closures, not a consecutive closure (to change the message, etc)
+    if(!currentlyClosed && thisStatus == "closed") {
+      lastClosedIndex = i;
+      currentlyClosed = true;
+    }
+    
+    // If we were in a closure and this row opens us back up, add the computed time between then and now
+    if(currentlyClosed && thisStatus == "open") {
+      currentlyClosed = false;
+      closedTime = closedTime + computeTime(thisRow, rows[lastClosedIndex]);
+    } 
+  }
+  
+  // Need to count closure times up to the end of a month if the month ended while closed
+  if(currentlyClosed) {
+    if(index != 1) {
+      let lastClosedTime = rows[lastClosedIndex];
+      let endOfMonth = new Date(monthMap[reverseMonthMap[thisMonth.split(" ")[0]] + 1] + " 01, " + thisMonth.split(" ")[1]);
+      closedTime = closedTime + computeTime(endOfMonth, lastClosedTime);
+    } else {
+      let lastClosedTime = rows[lastClosedIndex];
+      closedTime = closedTime + computeTime(new Date(), lastClosedTime);
+    }
+  }
+
+  // Convert times to days instead of milliseconds
+  
+  closedTime = closedTime / 1000 / 60 / 60 / 24;
+  closedTime = closedTime.toFixed(3);
+  
+  if(index != 1) {
+    totalTime = daysInMonth(reverseMonthMap[thisMonth.split(" ")[0]], thisMonth.split(" ")[1]);
+  } else {
+    // This is the current month, we shouldn't count the future as total time...
+    let startOfMonth = thisMonth.split(" ")[0] + " 1, " + thisMonth.split(" ")[1] + " 00:00:01 -0700";
+    startOfMonth = new Date(startOfMonth);
+    totalTime = computeTime(new Date(), startOfMonth) / 1000 / 60 / 60 / 24;
+    totalTime = totalTime.toFixed(3);
+  }
+  
+  openTime = totalTime - closedTime;
+  openTime = openTime.toFixed(3);
 }
 
 function addToMonthsChanged(date) {
@@ -518,4 +345,20 @@ function addToMonthsChanged(date) {
   if(!monthInList) {
     monthsChanged.push(thisMonth);
   }
+}
+
+function populateMonthsSelect() {
+  let select = document.getElementById("monthsSelect");
+  monthsChanged = monthsChanged.reverse();
+  for(let j of monthsChanged) {
+    let option = document.createElement("option");
+    option.value = j
+    option.textContent = j;
+    select.add(option)
+  }
+}
+
+function daysInMonth(iMonth, iYear)
+{
+  return 32 - new Date(iYear, iMonth, 32).getDate();
 }
